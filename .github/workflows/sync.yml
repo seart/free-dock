@@ -1,24 +1,48 @@
 name: 同步Docker镜像到阿里云
 
 on:
-  workflow_dispatch:
-    inputs:
-      image:
-        description: '要同步的镜像(例如: nginx:latest)'
-        required: true
+  schedule:
+    - cron: '0 2 * * 0'  # 每周日凌晨2点自动运行
+  workflow_dispatch:      # 也可以手动点击运行,不需要输入任何东西
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false  # 一个失败不影响其他的
+      matrix:
+        include:
+          # ==========================================
+          # 在这里添加你要同步的所有镜像
+          # ==========================================
+          - source: "nginx:latest"
+            target: "nginx"
+
+          - source: "mysql:8.0.30"
+            target: "mysql:8.0.30"
+
+          
+          # 继续添加更多镜像...
+          # - source: "你的镜像:标签"
+          #   target: "保存名称"
+    
     steps:
-      - name: 拉取Docker镜像
+      - name: 拉取源镜像
+        id: pull
+        continue-on-error: true
         run: |
-          echo "正在拉取镜像: ${{ github.event.inputs.image }}"
-          docker pull ${{ github.event.inputs.image }}
+          echo "正在拉取镜像: ${{ matrix.source }}"
+          docker pull ${{ matrix.source }}
       
-      - name: 登录阿里云镜像仓库
+      - name: 检查拉取结果
+        if: steps.pull.outcome == 'failure'
         run: |
-          echo "正在登录阿里云..."
+          echo "❌ 错误: 镜像 ${{ matrix.source }} 不存在或无法访问"
+          echo "请检查镜像名称和标签是否正确"
+          exit 1
+      
+      - name: 登录阿里云
+        run: |
           echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login \
             --username=${{ secrets.ALIYUN_USERNAME }} \
             --password-stdin \
@@ -26,25 +50,7 @@ jobs:
       
       - name: 推送到阿里云
         run: |
-          # 提取镜像名称和标签
-          SOURCE="${{ github.event.inputs.image }}"
-          IMAGE_NAME=$(echo $SOURCE | cut -d: -f1 | sed 's/.*\///')
-          IMAGE_TAG=$(echo $SOURCE | cut -d: -f2)
-          
-          # 如果没有标签,默认使用latest
-          if [ "$IMAGE_TAG" = "$SOURCE" ]; then
-            IMAGE_TAG="latest"
-          fi
-          
-          # 构建目标镜像地址
-          TARGET="${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/${IMAGE_NAME}:${IMAGE_TAG}"
-          
-          echo "正在打标签: $SOURCE → $TARGET"
-          docker tag $SOURCE $TARGET
-          
-          echo "正在推送镜像到阿里云..."
+          TARGET="${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/${{ matrix.target }}"
+          docker tag ${{ matrix.source }} $TARGET
           docker push $TARGET
-          
-          echo "✅ 同步成功!"
-          echo "可以使用以下命令拉取镜像:"
-          echo "docker pull $TARGET"
+          echo "✅ 成功同步: ${{ matrix.source }} → $TARGET"
