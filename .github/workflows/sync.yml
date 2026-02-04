@@ -44,9 +44,9 @@ jobs:
       - name: 登录阿里云
         run: |
           echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login \
+            ${{ secrets.ALIYUN_REGISTRY }} \
             --username=${{ secrets.ALIYUN_USERNAME }} \
-            --password-stdin \
-            ${{ secrets.ALIYUN_REGISTRY }}
+            --password-stdin
       
       - name: 推送到阿里云
         run: |
