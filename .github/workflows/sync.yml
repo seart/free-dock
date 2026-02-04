@@ -18,14 +18,14 @@ jobs:
           password: ${{ secrets.ALIYUN_PWD }}
 
       # 2. 开始搬运（这里以 mysql:8.0.30 为例）
-      - name: 拉取并推送到国内
+      - name: 批量搬运-拉取并推送到国内
         run: |
+          # 定义一个镜像列表  多个就追加 mysql:8.0.30 redis:7.2.4 nginx:1.25.3
+          images=(mysql:8.0.30)
           # 从官方拉取
-          docker pull mysql:8.0.30
-          
-          # 给镜像换个名字，换成你阿里云仓库的名字
-          # 格式：registry.cn-hangzhou.aliyuncs.com/命名空间/镜像名:版本
-          docker tag mysql:8.0.30 registry.cn-hangzhou.aliyuncs.com/abc-mirror/mysql:8.0.30
-          
-          # 推送到阿里云
-          docker push registry.cn-hangzhou.aliyuncs.com/my-mirror/mysql:8.0.30
+          for img in "${images[@]}"; do
+            docker pull $img
+            docker tag $img registry.cn-hangzhou.aliyuncs.com/abc-mirror/$img
+            # 推送到阿里云
+            docker push registry.cn-hangzhou.aliyuncs.com/abc-mirror/$img
+          done
