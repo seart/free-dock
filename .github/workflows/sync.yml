@@ -12,10 +12,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - source: "nginx:latest"
-            target: "nginx"
-          - source: "mysql:8.0.301"
+     
+          - source: "mysql:8.0.30"
             target: "mysql"
+            
+        # 多个镜像往下添加即可
+        #  - source: "nginx:latest"
+        #    target: "nginx"
+
     
     steps:
       - name: 拉取源镜像
