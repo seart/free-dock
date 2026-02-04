@@ -14,20 +14,29 @@ jobs:
         include:
           - source: "nginx:latest"
             target: "nginx"
-          - source: "mysql:8.0"
+          - source: "mysql:8.0.301"
             target: "mysql"
     
     steps:
       - name: 拉取源镜像
-        run: docker pull ${{ matrix.source }}
+        id: pull
+        continue-on-error: true
+        run: |
+          echo "正在拉取镜像: ${{ matrix.source }}"
+          docker pull ${{ matrix.source }}
       
+      - name: 检查拉取结果
+        if: steps.pull.outcome == 'failure'
+        run: |
+          echo "❌ 错误: 镜像 ${{ matrix.source }} 不存在或无法访问"
+          exit 1
       - name: 登录阿里云
         run: |
-          docker login \
-            -u ${{ secrets.ALIYUN_USERNAME }} \
-            -p ${{ secrets.ALIYUN_PASSWORD }} \
-            ${{ secrets.ALIYUN_REGISTRY }}
-      
+          echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login \
+            ${{ secrets.ALIYUN_REGISTRY }} \
+            --username=${{ secrets.ALIYUN_USERNAME }} \
+            --password-stdin
+            
       - name: 推送到阿里云
         run: |
           TARGET="${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/${{ matrix.target }}"
