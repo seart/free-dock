@@ -1,0 +1,31 @@
+name: 镜像搬运工
+
+on:
+  workflow_dispatch: # 允许你手动点击按钮开始搬运
+  push:
+    branches: [ "main" ] # 当你修改这个文件时也会自动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 登录到你的阿里云私人仓库
+      - name: 登录阿里云
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALIYUN_USER }}
+          password: ${{ secrets.ALIYUN_PWD }}
+
+      # 2. 开始搬运（这里以 mysql:8.0.30 为例）
+      - name: 拉取并推送到国内
+        run: |
+          # 从官方拉取
+          docker pull mysql:8.0.30
+          
+          # 给镜像换个名字，换成你阿里云仓库的名字
+          # 格式：registry.cn-hangzhou.aliyuncs.com/命名空间/镜像名:版本
+          docker tag mysql:8.0.30 registry.cn-hangzhou.aliyuncs.com/abc-mirror/mysql:8.0.30
+          
+          # 推送到阿里云
+          docker push registry.cn-hangzhou.aliyuncs.com/my-mirror/mysql:8.0.30
