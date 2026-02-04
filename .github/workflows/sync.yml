@@ -15,28 +15,22 @@ jobs:
           - source: "nginx:latest"
             target: "nginx"
           - source: "mysql:8.0"
-            target: "mysql:8.0"
+            target: "mysql"
     
     steps:
       - name: 拉取源镜像
-        run: |
-          echo "正在拉取镜像: ${{ matrix.source }}"
-          docker pull ${{ matrix.source }}
+        run: docker pull ${{ matrix.source }}
       
       - name: 登录阿里云
-        env:
-          REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
-          USERNAME: ${{ secrets.ALIYUN_USERNAME }}
-          PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
         run: |
-          echo "${PASSWORD}" | docker login ${REGISTRY} --username=${USERNAME} --password-stdin
+          docker login \
+            -u ${{ secrets.ALIYUN_USERNAME }} \
+            -p ${{ secrets.ALIYUN_PASSWORD }} \
+            ${{ secrets.ALIYUN_REGISTRY }}
       
       - name: 推送到阿里云
-        env:
-          REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
-          NAMESPACE: ${{ secrets.ALIYUN_NAMESPACE }}
         run: |
-          TARGET="${REGISTRY}/${NAMESPACE}/${{ matrix.target }}"
-          docker tag ${{ matrix.source }} ${TARGET}
-          docker push ${TARGET}
-          echo "✅ 成功: ${{ matrix.source }} → ${TARGET}"
+          TARGET="${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/${{ matrix.target }}"
+          docker tag ${{ matrix.source }} $TARGET
+          docker push $TARGET
+          echo "✅ 成功: ${{ matrix.source }} → $TARGET"
