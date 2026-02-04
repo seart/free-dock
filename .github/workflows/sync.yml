@@ -14,7 +14,7 @@ jobs:
         include:
      
           - source: "mysql:8.0.30"
-            target: "mysql"
+            target: "mysql:8.0.30"
             
         # 多个镜像往下添加即可
         #  - source: "nginx:latest"
