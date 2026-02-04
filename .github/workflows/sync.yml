@@ -2,55 +2,41 @@ name: 同步Docker镜像到阿里云
 
 on:
   schedule:
-    - cron: '0 2 * * 0'  # 每周日凌晨2点自动运行
-  workflow_dispatch:      # 也可以手动点击运行,不需要输入任何东西
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false  # 一个失败不影响其他的
+      fail-fast: false
       matrix:
         include:
-          # ==========================================
-          # 在这里添加你要同步的所有镜像
-          # ==========================================
           - source: "nginx:latest"
             target: "nginx"
-
-          - source: "mysql:8.0.30"
-            target: "mysql:8.0.30"
-
-          
-          # 继续添加更多镜像...
-          # - source: "你的镜像:标签"
-          #   target: "保存名称"
+          - source: "mysql:8.0"
+            target: "mysql:8.0"
     
     steps:
       - name: 拉取源镜像
-        id: pull
-        continue-on-error: true
         run: |
           echo "正在拉取镜像: ${{ matrix.source }}"
           docker pull ${{ matrix.source }}
       
-      - name: 检查拉取结果
-        if: steps.pull.outcome == 'failure'
-        run: |
-          echo "❌ 错误: 镜像 ${{ matrix.source }} 不存在或无法访问"
-          echo "请检查镜像名称和标签是否正确"
-          exit 1
-      
       - name: 登录阿里云
+        env:
+          REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
+          USERNAME: ${{ secrets.ALIYUN_USERNAME }}
+          PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
         run: |
-          echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login \
-            ${{ secrets.ALIYUN_REGISTRY }} \
-            --username=${{ secrets.ALIYUN_USERNAME }} \
-            --password-stdin
+          echo "${PASSWORD}" | docker login ${REGISTRY} --username=${USERNAME} --password-stdin
       
       - name: 推送到阿里云
+        env:
+          REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
+          NAMESPACE: ${{ secrets.ALIYUN_NAMESPACE }}
         run: |
-          TARGET="${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/${{ matrix.target }}"
-          docker tag ${{ matrix.source }} $TARGET
-          docker push $TARGET
-          echo "✅ 成功同步: ${{ matrix.source }} → $TARGET"
+          TARGET="${REGISTRY}/${NAMESPACE}/${{ matrix.target }}"
+          docker tag ${{ matrix.source }} ${TARGET}
+          docker push ${TARGET}
+          echo "✅ 成功: ${{ matrix.source }} → ${TARGET}"
